@@ -14,17 +14,25 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs {
-          inherit system overlays;
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    rust-overlay,
+  }:
+    flake-utils.lib.eachDefaultSystem (system: let
+      overlays = [(import rust-overlay)];
+      pkgs = import nixpkgs {
+        inherit system overlays;
+      };
+      rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+    in
+      with pkgs; {
+        packages = {
+          default = pkgs.callPackage ./default.nix {};
+          upmd = pkgs.callPackage ./default.nix {};
         };
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-      in
-      with pkgs;
-      {
+
         devShells.default = mkShell {
           buildInputs = [
             rustToolchain
@@ -38,5 +46,10 @@
             echo "Welcome to the upmd development environment!"
           '';
         };
-      });
+      })
+    // {
+      overlays.default = final: prev: {
+        upmd = prev.callPackage ./default.nix {};
+      };
+    };
 }
